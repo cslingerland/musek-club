@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Musek Clubs</title>
+</head>
+<body>
+
+<button><a href="{% url 'clubs:club-create' %}">Create Club</a></button>
+
+
+<h1>List of Clubs:</h1>
+{% for club in object_list %}
+
+<li><a href="{% url 'clubs:club' club.slug %}">{{club}}</a></li>
+
+{% endfor %}
+
+</body>
+</html>

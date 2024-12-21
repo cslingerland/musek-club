@@ -1,0 +1,15 @@
+<h1>{{ club }}</h1>
+<h2>{{ club.tagline }}</h2>
+<h3>Club Type: {{ club.club_type|title }}</h3>
+<span style="color:gray">Created {{ club.create_date }}</span>
+<br/><br/>
+Members:<br/>
+{% for u in club.members.all %}
+<li>{{ u.username }}</li>
+{% endfor %}
+<br/>
+Picks:
+<button><a href="{% url 'clubs:pick-create' club.slug %}">Pick</a></button>
+{% for pick in picks %}
+<li><a href="{{ pick.url }}" target="_blank">{{ pick }}</a></li>
+{% endfor %}
