@@ -1,4 +1,5 @@
-from django.shortcuts import get_object_or_404, render
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import PermissionDenied
 from django.urls import reverse_lazy
 from django.utils.text import slugify
 from django.views.generic import DetailView, ListView
@@ -10,34 +11,42 @@ from datetime import datetime
 
 
 # Create your views here.
-class ClubListView(ListView):
+class ClubListView(LoginRequiredMixin, ListView):
+    login_url = "/admin"
     template_name = 'clubs/clubs.html'
     def get_queryset(self):
-        return Club.objects.all()
+        return Club.objects.filter(members=self.request.user)
 
-class ClubView(DetailView):
+class ClubView(LoginRequiredMixin, DetailView):
     model = Club
     template_name = 'clubs/club.html'
 
+    # get and pass in picks related to club
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['picks'] = Pick.objects.filter(club=self.object).order_by('-created')
         return context
     
+    # ensure user is in club to view it
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset)
+        if self.request.user in obj.members.all():
+            return obj
+        else:
+            raise PermissionDenied
+    
 
-class ClubFormView(CreateView):
+class ClubFormView(LoginRequiredMixin, CreateView):
     model = Club
     template_name = 'clubs/club_form.html'
     fields = [
         'name',
         'tagline',
-        'club_type',
-        'members'
+        'club_type'
     ]
 
     def form_valid(self, form):
-        # todo: create logic to pop number if it's already got one at the end
-        #       to prevent slug-1-2-3-4 from happening
+        # ensure unique slug
         slug = slugify(form.cleaned_data['name'])
         counter = 1
         while Club.objects.filter(slug=slug).exists():
@@ -45,14 +54,17 @@ class ClubFormView(CreateView):
             counter += 1
         form.instance.slug = slug
         form.instance.create_date = datetime.now()
+        form.save()
+        # Auto-add member that created the group
+        form.instance.members.add(self.request.user.id)     
         return super().form_valid(form)
     
 
-class PickView(DetailView):
+class PickView(LoginRequiredMixin, DetailView):
     model = Pick
     template_name = 'clubs/pick.html'
 
-class PickFormView(CreateView):
+class PickFormView(LoginRequiredMixin, CreateView):
     model = Pick
     template_name = 'clubs/pick_form.html'
     fields = [
@@ -77,3 +89,4 @@ class PickFormView(CreateView):
     # allows for the club slug to be passed to the club url
     def get_success_url(self):
         return reverse_lazy('clubs:club', kwargs={'slug': self.kwargs['slug']})
+    
